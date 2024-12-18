@@ -1,0 +1,120 @@
+# **Image Classification System using CNNs**
+
+This project uses **Convolutional Neural Networks (CNNs)** with a pre-trained **VGG16** model for classifying images into different classes. The project includes data augmentation, model training, evaluation, and visualization of results.
+
+---
+
+## **Code Implementation**
+
+```python
+# Mount Google Drive
+from google.colab import drive
+drive.mount('/content/drive')
+
+# Import libraries
+import tensorflow as tf
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+from tensorflow.keras.applications import VGG16
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, Flatten, Dropout
+from tensorflow.keras.optimizers import Adam
+from sklearn.metrics import classification_report, confusion_matrix
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+
+# Set dataset path
+data_path = '/content/drive/MyDrive/Data'
+train_dir = os.path.join(data_path, 'train')
+val_dir = "/content/drive/MyDrive/Data/validation"
+print("Validation Directory:", os.path.exists(val_dir))
+
+# Step 1: Data Augmentation
+train_datagen = ImageDataGenerator(
+    rescale=1.0/255.0,
+    rotation_range=20,
+    width_shift_range=0.2,
+    height_shift_range=0.2,
+    zoom_range=0.2,
+    horizontal_flip=True,
+    fill_mode='nearest'
+)
+
+val_datagen = ImageDataGenerator(rescale=1.0/255.0)
+
+train_generator = train_datagen.flow_from_directory(
+    train_dir,
+    target_size=(224, 224),
+    batch_size=32,
+    class_mode='categorical'
+)
+
+val_generator = val_datagen.flow_from_directory(
+    val_dir,
+    target_size=(224, 224),
+    batch_size=32,
+    class_mode='categorical'
+)
+
+# Step 2: Load Pre-trained Model (VGG16)
+base_model = VGG16(weights='imagenet', include_top=False, input_shape=(224, 224, 3))
+
+# Freeze the pre-trained layers
+for layer in base_model.layers:
+    layer.trainable = False
+
+# Add custom layers for classification
+x = base_model.output
+x = Flatten()(x)
+x = Dense(128, activation='relu')(x)
+x = Dropout(0.5)(x)
+output_layer = Dense(train_generator.num_classes, activation='softmax')(x)
+
+model = Model(inputs=base_model.input, outputs=output_layer)
+
+# Step 3: Compile the Model
+model.compile(optimizer=Adam(learning_rate=0.0001),
+              loss='categorical_crossentropy',
+              metrics=['accuracy'])
+
+# Step 4: Train the Model
+history = model.fit(
+    train_generator,
+    epochs=10,
+    validation_data=val_generator
+)
+
+# Step 5: Evaluate the Model
+val_generator.reset()
+predictions = model.predict(val_generator, verbose=1)
+y_pred = np.argmax(predictions, axis=1)
+
+# Confusion Matrix and Classification Report
+print("Confusion Matrix")
+print(confusion_matrix(val_generator.classes, y_pred))
+
+print("Classification Report")
+target_names = list(val_generator.class_indices.keys())
+print(classification_report(val_generator.classes, y_pred, target_names=target_names))
+
+# Step 6: Plot Training Performance
+plt.plot(history.history['accuracy'], label='Training Accuracy')
+plt.plot(history.history['val_accuracy'], label='Validation Accuracy')
+plt.title('Model Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
+
+plt.plot(history.history['loss'], label='Training Loss')
+plt.plot(history.history['val_loss'], label='Validation Loss')
+plt.title('Model Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# Step 7: Save the Model
+model_path = '/content/drive/MyDrive/image_classifier.h5'
+model.save(model_path)
+print(f"Model saved to {model_path}")
