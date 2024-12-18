@@ -1,12 +1,7 @@
-# **Image Classification System using CNNs**
-
-This project uses **Convolutional Neural Networks (CNNs)** with a pre-trained **VGG16** model for classifying images into different classes. The project includes data augmentation, model training, evaluation, and visualization of results.
-
----
 
 ## **Code Implementation**
 
-```python
+
 # Mount Google Drive
 from google.colab import drive
 drive.mount('/content/drive')
